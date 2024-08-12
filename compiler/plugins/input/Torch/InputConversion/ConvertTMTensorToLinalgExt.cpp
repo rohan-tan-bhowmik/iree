@@ -98,6 +98,8 @@ struct AttentionOpConversion
     Value query = op.getQuery();
     Value key = op.getKey();
     Value value = op.getValue();
+    auto optionalMask = op.getAttnMask();
+    Value mask = optionalMask ? *optionalMask : Value();
 
     ShapedType outputType = op.getOutputType();
     Value result = rewriter.create<tensor::EmptyOp>(
