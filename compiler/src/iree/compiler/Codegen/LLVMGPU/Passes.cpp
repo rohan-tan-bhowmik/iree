@@ -341,7 +341,8 @@ void addGPUTileAndFusePassPipeline(OpPassManager &funcPassManager) {
 
   // Normalize loop bounds for later lowerings.
   funcPassManager.addPass(iree_compiler::createNormalizeLoopBoundsPass(
-      /*normalizeFor=*/false, /*normalizeForall=*/true));
+      NormalizeLoopBoundsPassOptions{/*normalizeFor=*/false,
+                                     /*normalizeForall=*/true}));
   funcPassManager.addPass(createCanonicalizerPass());
   funcPassManager.addPass(createCSEPass());
   funcPassManager.addPass(createLoopInvariantCodeMotionPass());
@@ -973,7 +974,7 @@ static void addLowerToLLVMGPUPasses(OpPassManager &modulePassManager,
 
       // Pad allocations with dynamic dimension after linalg lowering but before
       // lowering SCF and affine ops.
-      .addPass(createPadDynamicAlloc)
+      .addPass(createPadDynamicAllocPass)
 
       .addPass(createLowerAffinePass)
       .addPass(createCanonicalizerPass)
@@ -992,13 +993,8 @@ static void addLowerToLLVMGPUPasses(OpPassManager &modulePassManager,
   // Run checks on shared memory usage.
   funcPassManager
       .addPass([&]() {
-        auto getSharedMemoryLimit = [](mlir::FunctionOpInterface entryPoint) {
-          IREE::GPU::TargetAttr target = getGPUTargetAttr(entryPoint);
-          return target.getWgp().getMaxWorkgroupMemoryBytes();
-        };
         auto getIndexBitwidth = [](mlir::FunctionOpInterface) { return 64; };
-        return createGPUCheckResourceUsagePass(getSharedMemoryLimit,
-                                               getIndexBitwidth);
+        return createGPUCheckResourceUsagePass(getIndexBitwidth);
       })
       // SCF -> CF
       .addPass(createConvertSCFToCFPass)
@@ -1054,8 +1050,8 @@ static void buildLLVMGPUCodegenConfigurationPassPipelineImpl(
     OpPassManager &modulePassManager) {
   {
     FunctionLikeNest funcPassManager(modulePassManager);
-    funcPassManager.addPredicatedPass(
-        clLLVMGPUUseIgemm, IREE::LinalgExt::createConvertConv2DToIm2ColOpPass);
+    funcPassManager.addPredicatedPass(clLLVMGPUUseIgemm,
+                                      createConvolutionToIGEMMPass);
     funcPassManager.addPass(createGPUGeneralizeNamedOpsPass);
     addCommonTargetExecutablePreprocessingPasses(funcPassManager);
     addEncodingToNopPasses(funcPassManager);
