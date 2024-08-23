@@ -1268,7 +1268,6 @@ LogicalResult AttentionOp::verify() {
   }
 
   if (isTiled) {
-    llvm::outs() << "tilesl\n";
     // Tiled/Flash attention.
     Type maxElementType = getMaxType()->getElementType();
     Type sumElementType = getSumType()->getElementType();
@@ -1334,12 +1333,10 @@ SmallVector<int64_t, 4> AttentionOp::getStaticLoopRanges() {
 //===----------------------------------------------------------------------===//
 
 void OnlineAttentionOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::Value query, ::mlir::Value key, ::mlir::Value value, ::mlir::Value scale, ::mlir::Value output, ::mlir::Value max, ::mlir::Value sum, ::mlir::ArrayAttr indexing_maps, std::optional<::mlir::Value> mask) {
-  llvm::outs() <<"online v2erify\n";
   build(odsBuilder, odsState, results, query, key, value, *mask ? *mask : Value(), scale, output, max, sum, indexing_maps);
 }
 
 LogicalResult OnlineAttentionOp::verify() {
-  llvm::outs() <<"online verify\n";
   OnlineAttentionOp attnOp = *this;
 
   SmallVector<AffineMap> indexingMaps = attnOp.getIndexingMapsArray();
@@ -1394,7 +1391,6 @@ LogicalResult OnlineAttentionOp::verify() {
 }
 
 MutableOperandRange OnlineAttentionOp::getDpsInitsMutable() {
-  llvm::outs() <<"getDpsInitsMutable " << (getMask() ? 5 : 4) << "\n";
   return MutableOperandRange(*this, /*numInputs=*/getMask() ? 5 : 4, /*numInits=*/3);
 }
 

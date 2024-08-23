@@ -200,9 +200,7 @@ createAttentionBody(Value keySlice, Value valueSlice, Value querySlice, Value ma
       builder.create<tensor::EmptyOp>(loc, resultShape, f32Type);
   Value qkTranspose = computeQKTranspose(querySlice, keySlice, emptySquare,
                                          zero, loc, builder, ops);
-  llvm::outs() << "HOOP\n";
   if (maskSlice) {
-    llvm::outs() << "1\n";
     qkTranspose = maskQKTranspose(qkTranspose, maskSlice, loc, builder, ops);
   }
 
@@ -303,7 +301,6 @@ void decomposeTiledAttention(IREE::LinalgExt::AttentionOp tiledAttnOp,
                              SmallVectorImpl<Operation *> &ops,
                              RewriterBase &rewriter,
                              std::optional<uint64_t> tileSize) {
-  llvm::outs() << "q\n";
 
   Location loc = tiledAttnOp.getLoc();
   Value keySlice = tiledAttnOp.getKey();
