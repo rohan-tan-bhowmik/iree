@@ -1201,11 +1201,7 @@ LogicalResult WinogradOutputTransformOp::reifyResultShapes(
 //===----------------------------------------------------------------------===//
 
 void AttentionOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::Value query, ::mlir::Value key, ::mlir::Value value, ::mlir::Value scale, ::mlir::ValueRange outputs, ::mlir::ArrayAttr indexing_maps, std::optional<::mlir::Value> mask) {
-  Value mask_in;
-  if (mask.has_value()) {
-    mask_in = mask.value();
-  }
-  build(odsBuilder, odsState, results, query, key, value, scale, mask_in, outputs, indexing_maps);
+  build(odsBuilder, odsState, results, query, key, value, scale, *mask ? *mask : Value(), outputs, indexing_maps);
 }
 
 
@@ -1333,7 +1329,23 @@ SmallVector<int64_t, 4> AttentionOp::getStaticLoopRanges() {
 //===----------------------------------------------------------------------===//
 
 void OnlineAttentionOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::Value query, ::mlir::Value key, ::mlir::Value value, ::mlir::Value scale, ::mlir::Value output, ::mlir::Value max, ::mlir::Value sum, ::mlir::ArrayAttr indexing_maps, std::optional<::mlir::Value> mask) {
-  build(odsBuilder, odsState, results, query, key, value, *mask ? *mask : Value(), scale, output, max, sum, indexing_maps);
+  llvm::outs() << "hello\n";
+  query.print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  key.print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  value.print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  if (*mask) {
+    (*mask).print(llvm::outs());
+    llvm::outs() << " IS THE MASK YAY ! :)\n";
+    
+  }
+    (output).print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+    (max).print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  build(odsBuilder, odsState, results, query, key, value, scale, *mask ? *mask : Value(), output, max, sum, indexing_maps);
 }
 
 LogicalResult OnlineAttentionOp::verify() {

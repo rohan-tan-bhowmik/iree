@@ -275,6 +275,7 @@ static OpFoldResult addOfrs(OpBuilder &builder, Location loc, OpFoldResult a,
 
 FailureOr<SmallVector<Value>>
 OnlineAttentionOp::decomposeOperation(OpBuilder &b) {
+  llvm::outs() << "hii! :)\n";
   Location loc = getLoc();
   Value query = getQuery();
   Value key = getKey();
@@ -285,6 +286,22 @@ OnlineAttentionOp::decomposeOperation(OpBuilder &b) {
   Value oldSum = getSum();
   Type elementType = getElementTypeOrSelf(getOutput().getType());
 
+  llvm::outs() << "again again again ! :)\n";
+
+query.print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  key.print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  value.print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+  if (*mask) {
+    (*mask).print(llvm::outs());
+    llvm::outs() << " ! :)\n";
+  }
+    (oldAcc).print(llvm::outs());
+  llvm::outs() << " ! :)\n";
+    (oldMax).print(llvm::outs());
+  llvm::outs() << " ! :)\n";
   FailureOr<AttentionOpDetail> maybeOpInfo =
       AttentionOpDetail::get(getIndexingMapsArray());
   assert(succeeded(maybeOpInfo) && "Invalid attention indexing maps");
@@ -336,6 +353,30 @@ OnlineAttentionOp::decomposeOperation(OpBuilder &b) {
   Value sZero = b.create<arith::ConstantOp>(loc, b.getZeroAttr(elementType));
   Value s = b.create<linalg::FillOp>(loc, sZero, emptyS).getResult(0);
   s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
+  // s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
+  // s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), *getMaskMap(), query, key, *mask);
+
+
+  // if (false && *mask) {
+  //   s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), *getMaskMap(), query, key, *mask);
+  // } else {
+  //   s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
+  // }
+
+    s.print(llvm::outs());
+    llvm::outs() << " is smap\n";
+
+  //   s.print(llvm::outs());
+  //   llvm::outs() << " is s\n";
+
+  // if (*mask) {
+  //   // Value s_temp = b.create<linalg::FillOp>(loc, sZero, emptyS).getResult(0);
+  //   // s_temp = computeAdd(b, loc, sMap, *getMaskMap(), sMap, s, *mask, s_temp);
+  //   // s = s_temp;
+  //   s = computeAdd(b, loc, sMap, *getMaskMap(), sMap, s, *mask, s);
+  // }
+  //     s.print(llvm::outs());
+  //   llvm::outs() << " is s\n";
 
   // For low bit-depth types we perform post Q @ K scaling. This is to avoid
   // losing numerical precision due to the low dynamic range of fp8 types when
@@ -345,10 +386,6 @@ OnlineAttentionOp::decomposeOperation(OpBuilder &b) {
     AffineMap scaleMap = AffineMap::get(/*dimCount=*/sMap.getNumInputs(),
                                         /*symbolCount=*/0, getContext());
     s = scaleValueInPlace(b, loc, sMap, scaleMap, s, scale);
-  }
-
-  if (*mask) {
-      s = computeAdd(b, loc, sMap, *getMaskMap(), sMap, s, *mask, s);
   }
 
   // TODO: This decomposition should be in a seperate op called

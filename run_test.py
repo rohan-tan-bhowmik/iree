@@ -24,9 +24,13 @@ def compare_npy_files(file1, file2):
         print(array1.shape)
         print(array2.shape)
 
-        print(array1[0][0][0])
-        print(array2[0][0][0])
+        print(array1)
+        print(array2)
 
+        print(np.mean(array1), np.std(array1))
+        print(np.mean(array2), np.std(array2))
+
+        print(np.average(np.sqrt((array1 - array2)**2)), " IS THE RMSE!")
         torch.testing.assert_close(array1, array2)
 
         if np.array_equal(array1, array2):
@@ -40,6 +44,7 @@ if __name__ == "__main__":
     python_file = 'test.py'
     bash_command_1 = 'build/tools/iree-compile test_attn.mlir --iree-hal-target-backends=rocm --iree-rocm-target-chip=gfx1100 --iree-global-opt-propagate-transposes=true --iree-opt-outer-dim-concat=true --iree-opt-const-eval=false --iree-opt-data-tiling=false --iree-rocm-waves-per-eu=2 --iree-vm-target-truncate-unsupported-floats --iree-codegen-llvmgpu-use-vector-distribution --iree-codegen-gpu-native-math-precision=true --iree-flow-enable-aggressive-fusion -o fused_attn.vmfb'
     bash_command_2 = 'build/tools/iree-run-module --module=fused_attn.vmfb --device=hip --input=@attn_q.npy --input=@attn_k.npy --input=@attn_v.npy --input=@attn_mask.npy --output=@attn_out.npy'
+    # bash_command_2 = 'build/tools/iree-run-module --module=fused_attn.vmfb --device=hip --input=@attn_q.npy --input=@attn_k.npy --input=@attn_v.npy --output=@attn_out.npy'
     npy_file_1 = 'attn_out.npy'
     npy_file_2 = 'attn_ref.npy'
 

@@ -344,11 +344,13 @@ IREE::LinalgExt::AttentionOp tileAttention(IREE::LinalgExt::AttentionOp attnOp,
   ops.push_back(tiledAttentionOp);
 
   return tiledAttentionOp;
-}
+} 
 
 void convertToOnlineAttention(IREE::LinalgExt::AttentionOp attnOp,
                               SmallVectorImpl<Operation *> &ops,
                               RewriterBase &rewriter) {
+  attnOp.print(llvm::outs());
+  llvm::outs() << " MAKES SENSE RIGHT\n";
   rewriter.setInsertionPoint(attnOp);
 
   Location loc = attnOp.getLoc();
@@ -404,12 +406,20 @@ void convertToOnlineAttention(IREE::LinalgExt::AttentionOp attnOp,
 
   // Create online attention op.
   SmallVector<AffineMap> indexingMaps = attnOp.getIndexingMapsArray();
+  llvm::outs() << "we have " << indexingMaps.size() << " indexing maps:\n";
+
+
+  // indexingMaps.erase(indexingMaps.begin() + 3);
+  // for (const auto &map : indexingMaps) {
+  //     map.print(llvm::outs());
+  //     llvm::outs() << "\n";
+  // }
   indexingMaps.push_back(maxMap);
   indexingMaps.push_back(sumMap); 
   OnlineAttentionOp onlineAttn = rewriter.create<OnlineAttentionOp>(
       loc, TypeRange{accFill.getType(), maxFill.getType(), sumFill.getType()},
-      attnOp.getQuery(), attnOp.getKey(), attnOp.getValue(), attnOp.getScale(), attnOp.getMask() ? attnOp.getMask() : Value(),
-      accFill, maxFill, sumFill, rewriter.getAffineMapArrayAttr(indexingMaps));
+      attnOp.getQuery(), attnOp.getKey(), attnOp.getValue(), attnOp.getScale(),
+      accFill, maxFill, sumFill, rewriter.getAffineMapArrayAttr(indexingMaps), attnOp.getMask());
   onlineAttn->setDiscardableAttrs(attnOp->getDiscardableAttrDictionary());
   ops.push_back(onlineAttn);
 

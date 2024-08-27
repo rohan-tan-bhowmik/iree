@@ -583,11 +583,17 @@ def IREELinalgExt_AttentionOp : IREELinalgExt_PureOp<"attention",
     std::optional<AffineMap> getMaxMap() {
       if (getNumResults() < 2)
         return std::nullopt;
+      if (getMask()) {
+        return cast<AffineMap>(getIndexingMapsArray()[5]);
+      }
       return cast<AffineMap>(getIndexingMapsArray()[4]);
     }
     std::optional<AffineMap> getSumMap() {
       if (getNumResults() < 3)
         return std::nullopt;
+      if (getMask()) {
+        return cast<AffineMap>(getIndexingMapsArray()[6]);
+      }
       return cast<AffineMap>(getIndexingMapsArray()[5]);
     }
     Value getOutput() {

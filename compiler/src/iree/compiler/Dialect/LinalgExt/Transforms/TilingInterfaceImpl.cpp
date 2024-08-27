@@ -1699,6 +1699,7 @@ FailureOr<TilingResult>
 AttentionOp::getTiledImplementation(OpBuilder &builder,
                                     ArrayRef<OpFoldResult> offsets,
                                     ArrayRef<OpFoldResult> sizes) {
+  llvm::outs() << "OAOAOAOAAAAAAAAAAAAAAAAAAAAAAAAAAAA \n";
   assert(offsets.size() == getIterationDomainRank());
   assert(sizes.size() == getIterationDomainRank());
 
@@ -1720,12 +1721,10 @@ AttentionOp::getTiledImplementation(OpBuilder &builder,
 
   int hasMask = 0;
   std::optional<Value> attnMask = getMask();
-  if (getMask()) {
+  if (*attnMask) {
     SmallVector<Range> maskSlice = getPermutedSlice(*getMaskMap(), offsets, sizes);
     tiledOperands.emplace_back(getSlice(builder, loc, attnMask.value(), maskSlice));    
     hasMask++;
-  } else {
-    tiledOperands.emplace_back(Value());
   }
 
   SmallVector<Range> outputSlice = getPermutedSlice(getOutputMap(), offsets, sizes);
@@ -1837,17 +1836,21 @@ OnlineAttentionOp::getTiledImplementation(OpBuilder &builder,
   tiledOperands.emplace_back(getSlice(builder, loc, getKey(), keySlice));
   tiledOperands.emplace_back(getSlice(builder, loc, getValue(), valueSlice));
   tiledOperands.emplace_back(scale);
+  int hasMask = 0;
   if (maskSlice){
+    // tiledOperands.emplace_back(Value());
+    // tiledOperands.emplace_back(getSlice(builder, loc, getQuery(), querySlice));
     tiledOperands.emplace_back(getSlice(builder, loc, getMask(), *maskSlice));
+    hasMask++;
   }
   tiledOperands.emplace_back(getSlice(builder, loc, getOutput(), outputSlice));
   tiledOperands.emplace_back(getSlice(builder, loc, getMax(), maxSlice));
   tiledOperands.emplace_back(getSlice(builder, loc, getSum(), sumSlice));
 
   SmallVector<Type> resultTypes;
-  resultTypes.push_back(tiledOperands[maskSlice ? 5 : 4].getType());
-  resultTypes.push_back(tiledOperands[maskSlice ? 6 : 5].getType());
-  resultTypes.push_back(tiledOperands[maskSlice ? 7 : 6].getType());
+  resultTypes.push_back(tiledOperands[4 + hasMask].getType());
+  resultTypes.push_back(tiledOperands[5 + hasMask].getType());
+  resultTypes.push_back(tiledOperands[6 + hasMask].getType());
 
   Operation *tiledOp =
       mlir::clone(builder, getOperation(), resultTypes, tiledOperands);
