@@ -198,13 +198,13 @@ static Value computeMatmul(OpBuilder &builder, Location loc, AffineMap lhsMap,
         accMap.getNumDims(), utils::IteratorType::parallel);
 
     auto genericOp = builder.create<linalg::GenericOp>(
-        loc, acc.getType(), SmallVector<Value>{lhs, rhs}, acc,
-        SmallVector<AffineMap>{lhsMap, rhsMap, accMap}, iteratorTypes,
+        loc, acc.getType(), SmallVector<Value>{lhs}, rhs,
+        SmallVector<AffineMap>{lhsMap, rhsMap}, iteratorTypes,
         [&](OpBuilder &b, Location loc, ValueRange args) {
           // Cast inputs to match output datatype.
-          Value lhs = convertScalarToDtype(b, loc, args[0], args[2].getType(),
+          Value lhs = convertScalarToDtype(b, loc, args[0], args[1].getType(),
                                           /*isUnsignedCast=*/false);
-          Value rhs = convertScalarToDtype(b, loc, args[1], args[2].getType(),
+          Value rhs = convertScalarToDtype(b, loc, args[1], args[1].getType(),
                                           /*isUnsignedCast=*/false);
           Value add = b.create<arith::AddFOp>(loc, lhs, rhs);
           b.create<linalg::YieldOp>(loc, add);
@@ -315,9 +315,9 @@ query.print(llvm::outs());
   // have better support for exp2 (we verified that we gain some speedup on
   // some GPUs).
   Value scale = getScale();
-  Value log2e = b.create<arith::ConstantOp>(
-      loc, b.getFloatAttr(scale.getType(), M_LOG2E));
-  scale = b.create<arith::MulFOp>(loc, scale, log2e);
+  // Value log2e = b.create<arith::ConstantOp>(
+  //     loc, b.getFloatAttr(scale.getType(), M_LOG2E));
+  // scale = b.create<arith::MulFOp>(loc, scale, log2e);
 
   auto qETy = getElementTypeOrSelf(query.getType());
   auto vETy = getElementTypeOrSelf(value.getType());
@@ -352,19 +352,35 @@ query.print(llvm::outs());
   Value emptyS = b.create<tensor::EmptyOp>(loc, sSizes, elementType);
   Value sZero = b.create<arith::ConstantOp>(loc, b.getZeroAttr(elementType));
   Value s = b.create<linalg::FillOp>(loc, sZero, emptyS).getResult(0);
-  s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
+  // s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
   // s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
   // s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), *getMaskMap(), query, key, *mask);
+  
+  s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
 
+  // For low bit-depth types we perform post Q @ K scaling. This is to avoid
+  // losing numerical precision due to the low dynamic range of fp8 types when
+  // pre applying the sclaing.
+  if (qETy.getIntOrFloatBitWidth() <= 8) {
+    AffineMap sMap = b.getMultiDimIdentityMap(sSizes.size());
+    AffineMap scaleMap = AffineMap::get(/*dimCount=*/sMap.getNumInputs(),
+                                        /*symbolCount=*/0, getContext());
+    s = scaleValueInPlace(b, loc, sMap, scaleMap, s, scale);
+  }
+  
+  if (*mask) {
+    s = computeAdd(b, loc, sMap, *getMaskMap(), *getMaskMap(), s, *mask, *mask);
+  }
 
-  // if (false && *mask) {
-  //   s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), *getMaskMap(), query, key, *mask);
-  // } else {
-  //   s = computeMatmul(b, loc, getQueryMap(), getKeyMap(), sMap, query, key, s);
-  // }
+  Value log2e = b.create<arith::ConstantOp>(
+    loc, b.getFloatAttr(scale.getType(), M_LOG2E));
+  AffineMap log2eMap = AffineMap::get(/*dimCount=*/sMap.getNumInputs(),
+                                      /*symbolCount=*/0, getContext());
+  s = scaleValueInPlace(b, loc, sMap, log2eMap, s, log2e);
+
 
     s.print(llvm::outs());
-    llvm::outs() << " is smap\n";
+    llvm::outs() << " is s!\n";
 
   //   s.print(llvm::outs());
   //   llvm::outs() << " is s\n";
@@ -377,16 +393,6 @@ query.print(llvm::outs());
   // }
   //     s.print(llvm::outs());
   //   llvm::outs() << " is s\n";
-
-  // For low bit-depth types we perform post Q @ K scaling. This is to avoid
-  // losing numerical precision due to the low dynamic range of fp8 types when
-  // pre applying the sclaing.
-  if (qETy.getIntOrFloatBitWidth() <= 8) {
-    AffineMap sMap = b.getMultiDimIdentityMap(sSizes.size());
-    AffineMap scaleMap = AffineMap::get(/*dimCount=*/sMap.getNumInputs(),
-                                        /*symbolCount=*/0, getContext());
-    s = scaleValueInPlace(b, loc, sMap, scaleMap, s, scale);
-  }
 
   // TODO: This decomposition should be in a seperate op called
   // "online softmax".

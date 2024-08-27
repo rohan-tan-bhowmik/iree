@@ -1,6 +1,7 @@
 import subprocess
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 def run_python_file(python_file):
     try:
@@ -26,6 +27,9 @@ def compare_npy_files(file1, file2):
 
         print(array1)
         print(array2)
+
+        # print(set(array1.flatten()))
+        # print(set(array2.flatten()))
 
         print(np.mean(array1), np.std(array1))
         print(np.mean(array2), np.std(array2))
