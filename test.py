@@ -2,8 +2,7 @@ import torch
 import numpy as np
 
 # softmax(Q * K^t) * V
-if __name__ == "__main__":
-    pass
+
 
 def gen_attention_no_mask():
     m = 4096
@@ -85,3 +84,6 @@ def gen_attention_causal_mask():
     # Post attention func
     out = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=mask)
     np.save("attn_ref.npy", out.detach().to(device="cpu").numpy())
+
+if __name__ == "__main__":
+    gen_attention_no_mask()
